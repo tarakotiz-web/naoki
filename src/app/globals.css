@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f6f8;
+  --surface: #ffffff;
+  --surface-muted: #f0f2f5;
+  --foreground: #14171c;
+  --foreground-muted: #5b6270;
+  --border: #e3e6eb;
+
+  --color-azure: #0a7cff;
+  --color-azure-dark: #0058c7;
+  --color-azure-light: #eaf3ff;
+  --color-gold: #b8912f;
+  --color-gold-light: #faf3e0;
+
+  --color-success: #1f9d55;
+  --color-success-light: #e7f7ec;
+  --color-warning: #c8890c;
+  --color-warning-light: #fdf1dc;
+  --color-danger: #d6383f;
+  --color-danger-light: #fceaeb;
+  --color-neutral: #6b7280;
+  --color-neutral-light: #f0f1f3;
+  --color-info: #6f42c1;
+  --color-info-light: #f1ebfa;
+
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --shadow-card: 0 1px 2px rgba(20, 23, 28, 0.04), 0 8px 24px -12px rgba(20, 23, 28, 0.12);
+  --shadow-float: 0 12px 32px -8px rgba(20, 23, 28, 0.24);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-azure: var(--color-azure);
+  --color-azure-dark: var(--color-azure-dark);
+  --color-azure-light: var(--color-azure-light);
+  --color-gold: var(--color-gold);
+  --color-gold-light: var(--color-gold-light);
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+  --color-danger: var(--color-danger);
+  --color-danger-light: var(--color-danger-light);
+  --color-neutral: var(--color-neutral);
+  --color-neutral-light: var(--color-neutral-light);
+  --color-info: var(--color-info);
+  --color-info-light: var(--color-info-light);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Hiragino Sans",
+    "Yu Gothic", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-azure-light);
+  color: var(--color-azure-dark);
+}
+
+/* iPad/iPhone でのスクロール操作を滑らかにする */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+  transition: transform 0.12s ease, opacity 0.12s ease, background-color 0.12s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary {
+  background: var(--color-azure);
+  color: white;
+}
+.btn-primary:hover {
+  background: var(--color-azure-dark);
+}
+.btn-gold {
+  background: var(--color-gold);
+  color: white;
+}
+.btn-secondary {
+  background: var(--surface-muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  background: var(--border);
+}
+.btn-danger {
+  background: var(--color-danger);
+  color: white;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}

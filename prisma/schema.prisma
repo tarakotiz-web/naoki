@@ -1,0 +1,269 @@
+// Cafe & Restaurant NODE - 予約管理システム
+// マルチ店舗対応を前提としたスキーマ。将来 SORA FOOD PORTAL に統合する想定で
+// 店舗情報・予約情報・顧客情報・LINE固有情報の責務を分離している。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// 店舗 (将来の多店舗展開を見据え、営業時間・定休日・席数はDBで管理する)
+// ---------------------------------------------------------------------------
+model Store {
+  id                     String   @id @default(cuid())
+  slug                   String   @unique
+  name                   String
+  phone                  String?
+  address                String?
+  seatsTotal             Int
+  openTime               String // "11:00" (HH:mm, 24h)
+  closeTime              String // "18:00" (HH:mm, 24h)
+  closedWeekdays         Int[] // 0=日,1=月,...6=土。NODEは月曜定休 -> [1]
+  timezone               String   @default("Asia/Tokyo")
+  slotIntervalMinutes    Int      @default(30) // タイムライン・空席計算の刻み
+  defaultDurationMinutes Int      @default(90) // 予約のデフォルト利用時間
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tables            Table[]
+  users             User[]
+  customers         Customer[]
+  reservations      Reservation[]
+  reservationSources ReservationSource[]
+
+  @@map("stores")
+}
+
+// ---------------------------------------------------------------------------
+// スタッフアカウント
+// ---------------------------------------------------------------------------
+enum UserRole {
+  ADMIN // 複数店舗管理者
+  MANAGER // 店長
+  STAFF // 一般スタッフ
+}
+
+model User {
+  id           String   @id @default(cuid())
+  storeId      String?
+  store        Store?   @relation(fields: [storeId], references: [id])
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// テーブル(席)管理。将来レイアウト変更してもコード変更不要な構造。
+// ---------------------------------------------------------------------------
+model Table {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  name      String // 例: "T1", "カウンター1"
+  maxSeats  Int
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservationTables ReservationTable[]
+
+  @@unique([storeId, name])
+  @@map("tables")
+}
+
+// ---------------------------------------------------------------------------
+// 予約経路(将来チャネル追加に対応できるようテーブルで管理)
+// ---------------------------------------------------------------------------
+model ReservationSource {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  code      String // manual, phone, line, instagram, google, walk_in, other
+  label     String // 表示名 (電話 / 公式LINE / Instagram / Google / 店頭 / その他)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  reservations Reservation[]
+
+  @@unique([storeId, code])
+  @@map("reservation_sources")
+}
+
+// ---------------------------------------------------------------------------
+// 顧客 (予約情報とは独立して管理。電話番号を基本キーとする)
+// ---------------------------------------------------------------------------
+model Customer {
+  id           String    @id @default(cuid())
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id])
+  name         String
+  phone        String
+  notes        String? // 顧客メモ(スタッフ用)
+  visitCount   Int       @default(0)
+  firstVisitAt DateTime?
+  lastVisitAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  reservations Reservation[]
+  lineUser     LineUser?
+
+  @@unique([storeId, phone])
+  @@index([storeId, name])
+  @@map("customers")
+}
+
+// ---------------------------------------------------------------------------
+// LINEユーザー情報 (顧客情報と完全一体化させず分離。電話番号照合も併用する)
+// ---------------------------------------------------------------------------
+model LineUser {
+  id          String    @id @default(cuid())
+  lineUserId  String    @unique
+  displayName String?
+  pictureUrl  String?
+  customerId  String?   @unique
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  reservations Reservation[]
+
+  @@map("line_users")
+}
+
+// ---------------------------------------------------------------------------
+// 予約ステータス
+// ---------------------------------------------------------------------------
+enum ReservationStatus {
+  PENDING // 予約受付 (LINE経由の初期状態)
+  CONFIRMED // 予約確定
+  ARRIVED // 来店済
+  SEATED // 利用中
+  COMPLETED // 会計済
+  CANCELLED // キャンセル
+  NO_SHOW // 無断キャンセル
+}
+
+enum CancelMethod {
+  STAFF
+  LINE
+  PHONE
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// 予約 (スタッフ手入力・LINE自動予約とも同じテーブル・同じAPIを使用する)
+// ---------------------------------------------------------------------------
+model Reservation {
+  id     String @id @default(cuid())
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  lineUserId String?
+  lineUser   LineUser? @relation(fields: [lineUserId], references: [id])
+
+  sourceId String
+  source   ReservationSource @relation(fields: [sourceId], references: [id])
+
+  reservationDate DateTime @db.Date
+  startTime       String // "12:00" (HH:mm)
+  durationMinutes Int      @default(90)
+
+  partySize  Int
+  adultCount Int?
+  childCount Int?
+
+  customerName String // 予約時点の顧客名スナップショット
+  phone        String // 予約時点の電話番号スナップショット
+
+  menu            String?
+  allergyInfo     String?
+  hasStroller     Boolean @default(false)
+  isAnniversary   Boolean @default(false)
+  anniversaryNote String?
+  customerRequest String?
+  staffMemo       String?
+
+  status ReservationStatus @default(PENDING)
+
+  cancelledAt  DateTime?
+  cancelMethod CancelMethod?
+  cancelReason String?
+
+  checkedInAt DateTime?
+  seatedAt    DateTime?
+  completedAt DateTime?
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tables ReservationTable[]
+  logs   ReservationLog[]
+
+  @@index([storeId, reservationDate])
+  @@index([storeId, reservationDate, status])
+  @@map("reservations")
+}
+
+// 予約とテーブルの中間テーブル(大人数で複数テーブル結合する場合にも対応)
+model ReservationTable {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  tableId       String
+  table         Table       @relation(fields: [tableId], references: [id])
+  createdAt     DateTime    @default(now())
+
+  @@unique([reservationId, tableId])
+  @@index([tableId])
+  @@map("reservation_tables")
+}
+
+// ---------------------------------------------------------------------------
+// 予約変更履歴
+// ---------------------------------------------------------------------------
+enum ReservationChangeType {
+  CREATED
+  TIME_CHANGED
+  PARTY_SIZE_CHANGED
+  TABLE_CHANGED
+  MENU_CHANGED
+  NOTE_ADDED
+  STATUS_CHANGED
+  CANCELLED
+  OTHER
+}
+
+model ReservationLog {
+  id            String                @id @default(cuid())
+  reservationId String
+  reservation   Reservation           @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  changeType    ReservationChangeType
+  changedBy     String? // staff email/name、"LINE"、"SYSTEM" など
+  before        Json?
+  after         Json?
+  note          String?
+  createdAt     DateTime              @default(now())
+
+  @@index([reservationId])
+  @@map("reservation_logs")
+}
