@@ -67,6 +67,8 @@ export const lineReservationCreateSchema = z.object({
   allergyInfo: z.string().max(500).optional().nullable(),
   customerRequest: z.string().max(1000).optional().nullable(),
   displayName: z.string().max(100).optional(),
+  // 複数店舗運用時、LIFFのURL(?store=slug)から渡ってくる店舗指定(任意)
+  store: z.string().optional(),
 });
 export type LineReservationCreateInput = z.infer<typeof lineReservationCreateSchema>;
 
@@ -79,6 +81,20 @@ export const lineReservationUpdateSchema = z.object({
   customerRequest: z.string().max(1000).optional().nullable(),
 });
 export type LineReservationUpdateInput = z.infer<typeof lineReservationUpdateSchema>;
+
+// 店舗設定画面用。ハードコーディングせず設定画面から編集できるようにする(要件0)。
+export const storeSettingsSchema = z.object({
+  name: z.string().min(1).max(100),
+  phone: z.string().max(30).optional().nullable(),
+  address: z.string().max(200).optional().nullable(),
+  seatsTotal: z.number().int().min(1).max(1000),
+  openTime: z.string().regex(/^\d{2}:\d{2}$/),
+  closeTime: z.string().regex(/^\d{2}:\d{2}$/),
+  closedWeekdays: z.array(z.number().int().min(0).max(6)),
+  slotIntervalMinutes: z.number().int().min(5).max(120),
+  defaultDurationMinutes: z.number().int().min(15).max(480),
+});
+export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>;
 
 export const tableInputSchema = z.object({
   name: z.string().min(1).max(50),

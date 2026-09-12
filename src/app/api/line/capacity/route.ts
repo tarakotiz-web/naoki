@@ -10,7 +10,7 @@ import { todayDateString } from "@/lib/time";
  */
 export async function GET(req: NextRequest) {
   try {
-    const store = await getDefaultStoreForPublicAccess();
+    const store = await getDefaultStoreForPublicAccess(req.nextUrl.searchParams.get("store"));
     const dateStr = req.nextUrl.searchParams.get("date") ?? todayDateString();
     const slots = await computeCapacityForDate(store.id, dateStr);
     return NextResponse.json({

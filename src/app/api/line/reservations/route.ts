@@ -5,10 +5,11 @@ import { lineReservationCreateSchema } from "@/lib/validation";
 import { handleApiError } from "@/lib/api-utils";
 import { notifyReservationCreated } from "@/server/notifications";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const identity = await requireLineIdentity(req);
-    const reservations = await listLineReservations(identity);
+    const storeSlug = req.nextUrl.searchParams.get("store");
+    const reservations = await listLineReservations(identity, storeSlug);
     return NextResponse.json({ reservations });
   } catch (error) {
     return handleApiError(error);

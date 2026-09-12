@@ -13,7 +13,7 @@ import { dateStringToUTCDate, todayDateString } from "@/lib/time";
 export async function GET(req: NextRequest) {
   try {
     requireExternalApiKey(req);
-    const store = await getDefaultStoreForPublicAccess();
+    const store = await getDefaultStoreForPublicAccess(req.nextUrl.searchParams.get("store"));
     const from = req.nextUrl.searchParams.get("from") ?? todayDateString();
     const to = req.nextUrl.searchParams.get("to") ?? from;
 

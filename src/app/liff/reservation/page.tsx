@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLiff } from "@/components/liff/use-liff";
 import { LiffLoading, LiffNotConfigured, LiffError } from "@/components/liff/liff-status-guard";
 import { formatTimeRange, todayDateString } from "@/lib/time";
@@ -13,8 +14,10 @@ interface CreatedReservation {
   partySize: number;
 }
 
-export default function LiffReservationPage() {
+function LiffReservationForm() {
   const liff = useLiff();
+  // 複数店舗運用時、LIFFのURLに ?store=<slug> を付けて店舗を指定できる。
+  const storeSlug = useSearchParams().get("store");
 
   const [reservationDate, setReservationDate] = useState(todayDateString());
   const [startTime, setStartTime] = useState("12:00");
@@ -81,6 +84,7 @@ export default function LiffReservationPage() {
           allergyInfo: allergyInfo || undefined,
           customerRequest: customerRequest || undefined,
           displayName: liff.profile?.displayName,
+          store: storeSlug || undefined,
         }),
       });
       const data = await res.json();
@@ -211,6 +215,14 @@ export default function LiffReservationPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function LiffReservationPage() {
+  return (
+    <Suspense>
+      <LiffReservationForm />
+    </Suspense>
   );
 }
 

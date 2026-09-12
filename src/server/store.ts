@@ -25,9 +25,17 @@ export async function getCurrentStore() {
 /**
  * スタッフのログインセッションを前提にしない店舗解決。
  * LINE予約(LIFF)や外部連携APIなど、ログイン不要な導線から呼び出す。
- * 複数店舗対応時はLIFFごとにstoreIdをクエリパラメータ等で受け取る形に拡張する。
+ *
+ * `storeSlug` を渡すと複数店舗運用時にその店舗を明示的に選べる
+ * (LIFFのURLに `?store=<slug>` を付与する、外部APIに `store` クエリを渡す等)。
+ * 省略時は運用中の店舗が1つだけの現状に合わせ、先頭のアクティブな店舗にフォールバックする。
  */
-export async function getDefaultStoreForPublicAccess() {
+export async function getDefaultStoreForPublicAccess(storeSlug?: string | null) {
+  if (storeSlug) {
+    const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
+    if (store && store.isActive) return store;
+  }
+
   const store = await prisma.store.findFirst({
     where: { isActive: true },
     orderBy: { createdAt: "asc" },

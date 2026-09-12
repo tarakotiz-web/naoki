@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLiff } from "@/components/liff/use-liff";
 import { LiffLoading, LiffNotConfigured, LiffError } from "@/components/liff/liff-status-guard";
 import { RESERVATION_STATUS_LABELS } from "@/lib/reservation-status";
@@ -20,8 +21,9 @@ interface MyReservation {
 
 const EDITABLE_STATUSES = new Set(["PENDING", "CONFIRMED"]);
 
-export default function MyReservationsPage() {
+function MyReservationsView() {
   const liff = useLiff();
+  const storeSlug = useSearchParams().get("store");
   const [reservations, setReservations] = useState<MyReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -29,13 +31,14 @@ export default function MyReservationsPage() {
   const load = useCallback(async () => {
     if (liff.status !== "ready" || !liff.idToken) return;
     setLoading(true);
-    const res = await fetch("/api/line/reservations", {
+    const query = storeSlug ? `?store=${encodeURIComponent(storeSlug)}` : "";
+    const res = await fetch(`/api/line/reservations${query}`, {
       headers: { Authorization: `Bearer ${liff.idToken}` },
     });
     const data = await res.json();
     setReservations(data.reservations ?? []);
     setLoading(false);
-  }, [liff.status, liff.idToken]);
+  }, [liff.status, liff.idToken, storeSlug]);
 
   useEffect(() => {
     load();
@@ -70,6 +73,14 @@ export default function MyReservationsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MyReservationsPage() {
+  return (
+    <Suspense>
+      <MyReservationsView />
+    </Suspense>
   );
 }
 

@@ -51,14 +51,15 @@ src/app/api/                REST APIルート
   line/                      LIFF/Webhook向け(要LIFF IDトークン or 署名検証)
   cron/reminders/            前日/当日リマインド送信(要CRON_SECRET)
   external/v1/               外部連携向け読み取り専用API(要EXTERNAL_API_KEY)
-src/app/(main)/              スタッフ向け画面(予約台帳・カレンダー・顧客管理・テーブル管理・分析)
+src/app/(main)/              スタッフ向け画面(予約台帳・カレンダー・顧客管理・テーブル管理・分析・設定)
 src/app/liff/                お客様向けLIFF画面(予約フォーム・予約確認/変更/キャンセル)
 src/components/             UIコンポーネント
+scripts/setup-line-richmenu.ts  リッチメニュー自動セットアップスクリプト
 ```
 
 ## 設計上の要点
 
-- **店舗情報はDB管理**: `stores` テーブルに営業時間・定休日・席数・タイムゾーンを保持。ハードコーディングなし。多店舗展開時は `stores` に行を追加し、`users.storeId` でスタッフを割り当てるだけで対応可能。
+- **店舗情報はDB管理**: `stores` テーブルに営業時間・定休日・席数・タイムゾーンを保持。ハードコーディングなし。スタッフは `/settings` 画面(ADMIN権限のみ編集可)からも変更できる。多店舗展開時は `stores` に行を追加し、`users.storeId` でスタッフを割り当てるだけで対応可能。LIFF・外部APIも `?store=<slug>` で対象店舗を指定でき、省略時のみ先頭のアクティブな店舗にフォールバックする。
 - **予約可能判定ロジックは単一**: `src/server/availability.ts` の `checkAvailability()` が唯一の判定ロジック。スタッフ手入力・WALK-IN・LINE予約はすべて `src/server/reservations.ts` の `createReservation()` / `updateReservation()` を経由する。判定ロジックを二重実装しないこと。
 - **顧客情報とLINE情報を分離**: `customers` テーブルと `line_users` テーブルを分離し、電話番号を基本キーに顧客照合する。LINEユーザーIDのみに依存しない(`src/server/line/customer-link.ts`)。
 - **予約変更履歴**: `reservation_logs` にすべての変更(作成・時間変更・ステータス変更・キャンセル)を記録。
@@ -105,6 +106,16 @@ Webhook(`src/app/api/line/webhook/route.ts`)は署名検証をして「予約す
 
 `/liff/my-reservations` から、ステータスが「予約受付」「予約確定」の間のみ日時・人数の変更とキャンセルができる。すべて `updateReservation()` / `cancelReservation()` を経由するため、スタッフ側の予約台帳にも即時反映される。
 
+### リッチメニューの自動セットアップ
+
+`.env` にチャネルアクセストークンとLIFF IDを設定した上で以下を実行すると、ブランドカラー(Azure/ブラック/ゴールド)のリッチメニュー画像を生成 → LINEに作成 → 画像アップロード → 全ユーザー向けデフォルト設定、まで自動で行う。
+
+```bash
+npm run line:setup-richmenu
+```
+
+画像生成(SVG→PNG変換、`sharp`使用)自体はこの環境で動作確認済み。LINE APIへの登録は実チャネルが必要なため未実施。日本語が文字化けする場合は実行環境にNoto Sans JP等の日本語フォントを追加すること。
+
 ## 通知(PHASE 10)
 
 `src/server/notifications.ts` が予約作成・確定・変更・キャンセル時にLINE連携済みの顧客へpushメッセージを送る(LINE未連携の顧客には何も送らない)。
@@ -131,8 +142,11 @@ curl "https://<デプロイ先ドメイン>/api/external/v1/reservations?from=20
 
 将来的にSORA FOOD PORTAL・Google Calendar・Instagram連携を追加する場合は、この `external/v1` 配下にエンドポイントを増やしていく想定。書き込み系(予約の作成等)を外部連携に開放する場合も、必ず `createReservation()` 等の共通ロジックを経由すること。
 
+## 店舗設定画面(PHASE 1)
+
+`/settings` (ADMIN権限のみ編集可、STAFFは閲覧のみ)で店舗名・電話番号・住所・総席数・営業時間・定休日・予約スロット間隔・デフォルト利用時間を編集できる。ハードコーディングなしという要件をDBだけでなく画面からも満たす。
+
 ## 未確認・今後の課題
 
-- 実際のLINE Developersチャネルでの疎通確認(Webhook受信・push配信・LIFFログイン)は本セッションでは実施できていない。
-- リッチメニューの作成(画像アップロード・タップ領域設定)はLINE公式アカウントマネージャーまたは`@line/bot-sdk`のRichMenu APIで別途行う必要がある。
-- 複数店舗対応は`stores`テーブル自体は用意済みだが、LIFF/外部APIは現状「先頭のアクティブな店舗」を暗黙に使う実装(`getDefaultStoreForPublicAccess()`)。複数店舗が実在する場合はLIFFのクエリパラメータ等で店舗を指定できるよう拡張が必要。
+- **実際のLINE Developersチャネルでの疎通確認**(Webhook受信・push配信・LIFFログイン・リッチメニュー登録)は、この開発環境にLINEアカウントの認証情報がないため実施できていない。コード・スクリプトは用意済みなので、`.env` に実際のチャネル情報を設定すれば動作するはず。実機のLINEアプリで一通り試し、問題があれば都度修正が必要。
+- リッチメニューの画像内テキストは日本語フォントに依存する(`npm run line:setup-richmenu` を実行する環境にNoto Sans JP等が必要)。

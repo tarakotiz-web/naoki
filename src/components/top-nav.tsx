@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/customers", label: "顧客管理" },
   { href: "/tables", label: "テーブル管理" },
   { href: "/analytics", label: "分析" },
+  { href: "/settings", label: "設定" },
 ];
 
 export function TopNav({ storeName }: { storeName: string }) {

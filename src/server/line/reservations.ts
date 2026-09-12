@@ -23,7 +23,7 @@ export async function createLineReservation(
   identity: LineIdentity,
   input: LineReservationCreateInput
 ) {
-  const store = await getDefaultStoreForPublicAccess();
+  const store = await getDefaultStoreForPublicAccess(input.store);
 
   const lineUser = await findOrCreateLineUser(
     identity.lineUserId,
@@ -53,8 +53,8 @@ export async function createLineReservation(
   );
 }
 
-export async function listLineReservations(identity: LineIdentity) {
-  const store = await getDefaultStoreForPublicAccess();
+export async function listLineReservations(identity: LineIdentity, storeSlug?: string | null) {
+  const store = await getDefaultStoreForPublicAccess(storeSlug);
   const lineUser = await prisma.lineUser.findUnique({ where: { lineUserId: identity.lineUserId } });
   if (!lineUser) return [];
 
