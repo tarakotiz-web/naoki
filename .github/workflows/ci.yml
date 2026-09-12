@@ -26,8 +26,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Type check
-        run: npx tsc --noEmit
-
-      - name: Build
+      # next build generates Next.js's own type declarations (e.g. LayoutProps)
+      # before type-checking, so it also serves as the type-check step here.
+      # A standalone `tsc --noEmit` fails on a fresh checkout because those
+      # generated types don't exist until a build has run at least once.
+      - name: Build (includes type check)
         run: npm run build
