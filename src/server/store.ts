@@ -21,3 +21,19 @@ export async function getCurrentStore() {
   }
   return fallback;
 }
+
+/**
+ * スタッフのログインセッションを前提にしない店舗解決。
+ * LINE予約(LIFF)や外部連携APIなど、ログイン不要な導線から呼び出す。
+ * 複数店舗対応時はLIFFごとにstoreIdをクエリパラメータ等で受け取る形に拡張する。
+ */
+export async function getDefaultStoreForPublicAccess() {
+  const store = await prisma.store.findFirst({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!store) {
+    throw new Error("店舗が登録されていません。");
+  }
+  return store;
+}

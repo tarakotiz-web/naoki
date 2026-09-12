@@ -54,6 +54,32 @@ export const statusChangeSchema = z.object({
 });
 export type StatusChangeInput = z.infer<typeof statusChangeSchema>;
 
+// LIFF予約フォーム用の入力スキーマ。項目はスタッフ用より少ないが、
+// 最終的には reservationCreateSchema 相当のデータに変換して
+// createReservation() を呼び出す(判定ロジック・登録経路を分けない)。
+export const lineReservationCreateSchema = z.object({
+  reservationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付形式が不正です"),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "時間形式が不正です"),
+  partySize: z.number().int().min(1).max(200),
+  childCount: z.number().int().min(0).optional(),
+  customerName: z.string().min(1, "お名前は必須です").max(100),
+  phone: z.string().min(1, "電話番号は必須です").max(30),
+  allergyInfo: z.string().max(500).optional().nullable(),
+  customerRequest: z.string().max(1000).optional().nullable(),
+  displayName: z.string().max(100).optional(),
+});
+export type LineReservationCreateInput = z.infer<typeof lineReservationCreateSchema>;
+
+export const lineReservationUpdateSchema = z.object({
+  reservationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  partySize: z.number().int().min(1).max(200).optional(),
+  childCount: z.number().int().min(0).optional(),
+  allergyInfo: z.string().max(500).optional().nullable(),
+  customerRequest: z.string().max(1000).optional().nullable(),
+});
+export type LineReservationUpdateInput = z.infer<typeof lineReservationUpdateSchema>;
+
 export const tableInputSchema = z.object({
   name: z.string().min(1).max(50),
   maxSeats: z.number().int().min(1).max(100),

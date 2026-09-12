@@ -5,6 +5,7 @@ import { createReservation, AvailabilityError } from "@/server/reservations";
 import { reservationCreateSchema } from "@/lib/validation";
 import { requireActor, handleApiError } from "@/lib/api-utils";
 import { dateStringToUTCDate, todayDateString } from "@/lib/time";
+import { notifyReservationCreated } from "@/server/notifications";
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
     const input = reservationCreateSchema.parse(body);
 
     const reservation = await createReservation(store.id, input, actor.email);
+    notifyReservationCreated(reservation).catch((e) => console.error("[notify] failed", e));
     return NextResponse.json({ reservation }, { status: 201 });
   } catch (error) {
     if (error instanceof AvailabilityError) return handleApiError(error);

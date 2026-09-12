@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { updateReservation } from "@/server/reservations";
 import { reservationUpdateSchema } from "@/lib/validation";
 import { requireActor, handleApiError } from "@/lib/api-utils";
+import { notifyReservationChanged } from "@/server/notifications";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -34,6 +35,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const body = await req.json();
     const patch = reservationUpdateSchema.parse(body);
     const reservation = await updateReservation(id, patch, actor.email);
+    notifyReservationChanged(reservation).catch((e) => console.error("[notify] failed", e));
     return NextResponse.json({ reservation });
   } catch (error) {
     return handleApiError(error);

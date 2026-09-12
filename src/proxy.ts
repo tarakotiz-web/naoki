@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/liff"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -9,7 +9,9 @@ export default auth((req) => {
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/line"); // LINE webhook/LIFF は別認証(署名検証)を行う
+    pathname.startsWith("/api/line") || // LINE webhook/LIFF は別認証(署名検証・IDトークン検証)を行う
+    pathname.startsWith("/api/cron") || // 外部スケジューラからの呼び出し。シークレットヘッダーで認証する
+    pathname.startsWith("/api/external"); // SORA FOOD PORTAL等の外部連携用。APIキーで認証する
 
   if (isPublic) return NextResponse.next();
 

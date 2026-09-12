@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { AvailabilityError, InvalidTransitionError } from "@/server/reservations";
+import { LineAuthError } from "@/server/line/verify-id-token";
+import { LineReservationAccessError } from "@/server/line/reservations";
+import { ExternalAuthError } from "@/lib/external-auth";
 import { ZodError } from "zod";
 
 export async function requireActor(): Promise<{ email: string; storeId: string | null }> {
@@ -30,6 +33,15 @@ export function handleApiError(error: unknown): NextResponse {
   }
   if (error instanceof InvalidTransitionError) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+  if (error instanceof LineAuthError) {
+    return NextResponse.json({ error: error.message }, { status: 401 });
+  }
+  if (error instanceof LineReservationAccessError) {
+    return NextResponse.json({ error: error.message }, { status: 403 });
+  }
+  if (error instanceof ExternalAuthError) {
+    return NextResponse.json({ error: error.message }, { status: 401 });
   }
   if (error instanceof ZodError) {
     return NextResponse.json(
